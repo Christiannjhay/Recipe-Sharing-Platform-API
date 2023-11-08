@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from sqlalchemy import ForeignKey, create_engine
+from sqlalchemy import ForeignKey, create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String, Text
@@ -23,6 +23,129 @@ Session = sessionmaker(bind=engine)
 
 # Define a Recipe model
 Base = declarative_base()
+
+# API endpoint to retrieve all comments for a specific recipe by its ID
+@app.route('/recipes/<int:recipe_id>/comments', methods=['GET'])
+def get_comments_for_recipe(recipe_id):
+    session = Session()
+    recipe = session.query(Recipes).filter_by(RecipeID=recipe_id).first()
+
+    if not recipe:
+        session.close()
+        return jsonify({"message": "Recipe not found"}), 404
+
+    comments = session.query(Comments).filter_by(RecipeID=recipe_id).all()
+    session.close()
+
+    comment_list = [
+        {
+            'CommentID': comment.CommentID,
+            'RecipeID': comment.RecipeID,
+            'CommentText': comment.CommentText,
+        }
+        for comment in comments
+    ]
+
+    return jsonify(comment_list)
+
+# API endpoint to delete a specific recipe by its ID
+@app.route('/recipes/<int:recipe_id>', methods=['DELETE'])
+def delete_recipe(recipe_id):
+    session = Session()
+    recipe = session.query(Recipes).filter_by(RecipeID=recipe_id).first()
+
+    if not recipe:
+        session.close()
+        return jsonify({"message": "Recipe not found"}), 404
+
+    # Delete related comments
+    session.query(Comments).filter(Comments.RecipeID == recipe_id).delete(synchronize_session=False)
+
+    # Delete related ratings
+    session.query(Ratings).filter(Ratings.RecipeID == recipe_id).delete(synchronize_session=False)
+
+    # Delete the recipe from the database
+    session.delete(recipe)
+    session.commit()
+    session.close()
+
+    return jsonify({"message": "Recipe deleted successfully"})
+
+
+# API endpoint to update a specific recipe by its ID
+@app.route('/recipes/<int:recipe_id>', methods=['PUT'])
+def update_recipe(recipe_id):
+    data = request.get_json()
+    
+    name = data.get('name')
+    ingredients = data.get('ingredients')
+    steps = data.get('steps')
+    prep_time = data.get('prep_time')
+
+    session = Session()
+    recipe = session.query(Recipes).filter_by(RecipeID=recipe_id).first()
+
+    if not recipe:
+        session.close()
+        return jsonify({"message": "Recipe not found"}), 404
+
+    # Update the recipe with the new data
+    if name:
+        recipe.Name = name
+    if ingredients:
+        recipe.Ingredients = ingredients
+    if steps:
+        recipe.Steps = steps
+    if prep_time:
+        recipe.PreparationTime = prep_time
+
+    # Commit the changes to the database
+    session.commit()
+    session.close()
+
+    return jsonify({"message": "Recipe updated successfully"})
+
+
+# Define a route to retrieve details of a specific recipe by its ID
+@app.route('/recipes/<int:recipe_id>', methods=['GET'])
+def get_recipe_by_id(recipe_id):
+    session = Session()
+    recipe = session.query(Recipes).filter_by(RecipeID=recipe_id).first()
+    session.close()
+
+    if not recipe:
+        return jsonify({"message": "Recipe not found"}), 404
+
+    recipe_details = {
+        'RecipeID': recipe.RecipeID,
+        'Name': recipe.Name,
+        'Ingredients': recipe.Ingredients,
+        'Steps': recipe.Steps,
+        'PreparationTime': recipe.PreparationTime,
+    }
+
+    return jsonify(recipe_details)
+
+# API endpoint to retrieve a list of all recipes, sorted by most recent
+@app.route('/recipes', methods=['GET'])
+def get_all_recipes():
+    session = Session()
+    recipes = session.query(Recipes).order_by(desc(Recipes.RecipeID)).all()
+    session.close()
+
+    # Convert the query result to a list of dictionaries
+    recipe_list = [
+        {
+            'RecipeID': recipe.RecipeID,
+            'Name': recipe.Name,
+            'Ingredients': recipe.Ingredients,
+            'Steps': recipe.Steps,
+            'PreparationTime': recipe.PreparationTime,
+        }
+        for recipe in recipes
+    ]
+
+    return jsonify(recipe_list)
 
 # Define a Ratings model
 class Ratings(Base):
