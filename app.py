@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String, Text
@@ -24,6 +24,44 @@ Session = sessionmaker(bind=engine)
 # Define a Recipe model
 Base = declarative_base()
 
+# Define a Comment model
+class Comments(Base):
+    __tablename__ = 'Comments'
+
+    CommentID = Column(Integer, primary_key=True)
+    RecipeID = Column(Integer, ForeignKey('Recipes.RecipeID'), nullable=False)
+    CommentText = Column(Text, nullable=False, name='CommentText')
+    
+# Create the database table for Comments
+Base.metadata.create_all(engine)
+
+# API endpoint to add a comment to a specific recipe
+@app.route('/recipes/<int:recipe_id>/comments', methods=['POST'])
+def add_comment(recipe_id):
+    data = request.get_json()
+    
+    comment_text = data.get('comment_text')
+
+    # Check if the specified recipe exists
+    session = Session()
+    recipe = session.query(Recipes).filter_by(RecipeID=recipe_id).first()
+
+    if not recipe:
+        session.close()
+        return jsonify({"message": "Recipe not found"}), 404
+
+    # Create a new Comment object and associate it with the recipe
+    new_comment = Comments(RecipeID=recipe_id, CommentText=comment_text)
+
+    # Add the new comment to the database
+    session.add(new_comment)
+    session.commit()
+    session.close()
+
+    return jsonify({"message": "Comment added successfully"})
+
+
+#RECIPES
 class Recipes(Base):
     __tablename__ = 'Recipes'
 
@@ -59,3 +97,4 @@ def add_recipe():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
