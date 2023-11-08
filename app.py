@@ -24,6 +24,47 @@ Session = sessionmaker(bind=engine)
 # Define a Recipe model
 Base = declarative_base()
 
+# Define a Ratings model
+class Ratings(Base):
+    __tablename__ = 'Ratings'
+
+    RatingID = Column(Integer, primary_key=True)
+    RecipeID = Column(Integer, ForeignKey('Recipes.RecipeID'), nullable=False)
+    RatingValue = Column(Integer, nullable=False, name='RatingValue')
+
+# Create the database table for Ratings
+Base.metadata.create_all(engine)
+
+# API endpoint to rate a specific recipe
+@app.route('/recipes/<int:recipe_id>/ratings', methods=['POST'])
+def rate_recipe(recipe_id):
+    data = request.get_json()
+    
+    rating = data.get('rating')
+
+    # Check if the specified recipe exists
+    session = Session()
+    recipe = session.query(Recipes).filter_by(RecipeID=recipe_id).first()
+
+    if not recipe:
+        session.close()
+        return jsonify({"message": "Recipe not found"}), 404
+
+    # Check if the rating is within the valid range (1-5)
+    if not (1 <= rating <= 5):
+        session.close()
+        return jsonify({"message": "Invalid rating. Please provide a rating between 1 and 5"}), 400
+
+    # Create a new Rating object and associate it with the recipe
+    new_rating = Ratings(RecipeID=recipe_id, RatingValue=rating)
+
+    # Add the new rating to the database
+    session.add(new_rating)
+    session.commit()
+    session.close()
+
+    return jsonify({"message": "Rating added successfully"})
+
 # Define a Comment model
 class Comments(Base):
     __tablename__ = 'Comments'
