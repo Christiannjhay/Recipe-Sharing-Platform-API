@@ -9,7 +9,7 @@ from sqlalchemy import Column, Integer, String, Text
 # Define the Flask app
 app = Flask(__name__)
 
-# Define the MSSQL database connection details
+# Define the MSSQL database connection details  
 Server = 'Desktop-DA0V9'  # The hostname or IP address of your MSSQL server
 Database = 'RecipeSharing'
 Driver = 'ODBC Driver 17 for SQL Server'
