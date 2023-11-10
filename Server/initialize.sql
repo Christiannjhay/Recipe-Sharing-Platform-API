@@ -1,0 +1,13 @@
+CREATE DATABASE RecipeSharing;
+
+USE RecipeSharing;
+
+CREATE TABLE one (
+    id INT IDENTITY(1, 1) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE two (
+    id INT IDENTITY(1, 1) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
